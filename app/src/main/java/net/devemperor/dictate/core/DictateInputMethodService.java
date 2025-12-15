@@ -90,8 +90,14 @@ import java.util.concurrent.Executors;
 public class DictateInputMethodService extends InputMethodService {
 
     // Tag keys for QWERTY keyboard button data storage
-    private static final int TAG_KEY_LETTER = View.generateViewId();
-    private static final int TAG_KEY_SYMBOL = View.generateViewId();
+    private static final int TAG_KEY_LETTER = 1;
+    private static final int TAG_KEY_SYMBOL = 2;
+    
+    // QWERTY keyboard button dimensions (in dp/px)
+    private static final int KEYBOARD_BUTTON_HEIGHT_DP = 48;
+    private static final int KEYBOARD_BUTTON_MARGIN_PX = 2;
+    private static final int SPECIAL_BUTTON_WIDTH_DP = 56;
+    private static final int WIDE_SPECIAL_BUTTON_WIDTH_DP = 70;
 
     // define handlers and runnables for background tasks
     private Handler mainHandler;
@@ -1593,10 +1599,10 @@ public class DictateInputMethodService extends InputMethodService {
         MaterialButton button = new MaterialButton(context);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 0,
-                (int) (48 * context.getResources().getDisplayMetrics().density),
+                (int) (KEYBOARD_BUTTON_HEIGHT_DP * context.getResources().getDisplayMetrics().density),
                 1.0f
         );
-        params.setMargins(2, 0, 2, 0);
+        params.setMargins(KEYBOARD_BUTTON_MARGIN_PX, 0, KEYBOARD_BUTTON_MARGIN_PX, 0);
         button.setLayoutParams(params);
         button.setText(letter);
         button.setTag(TAG_KEY_LETTER, letter); // Store letter in tag
@@ -1625,11 +1631,12 @@ public class DictateInputMethodService extends InputMethodService {
 
     private MaterialButton createSpecialButton(Context context, String text, boolean wider) {
         MaterialButton button = new MaterialButton(context);
+        int widthDp = wider ? WIDE_SPECIAL_BUTTON_WIDTH_DP : SPECIAL_BUTTON_WIDTH_DP;
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                (int) ((wider ? 70 : 56) * context.getResources().getDisplayMetrics().density),
-                (int) (48 * context.getResources().getDisplayMetrics().density)
+                (int) (widthDp * context.getResources().getDisplayMetrics().density),
+                (int) (KEYBOARD_BUTTON_HEIGHT_DP * context.getResources().getDisplayMetrics().density)
         );
-        params.setMargins(2, 0, 2, 0);
+        params.setMargins(KEYBOARD_BUTTON_MARGIN_PX, 0, KEYBOARD_BUTTON_MARGIN_PX, 0);
         button.setLayoutParams(params);
         button.setText(text);
         button.setTextSize(12);
