@@ -90,8 +90,8 @@ import java.util.concurrent.Executors;
 public class DictateInputMethodService extends InputMethodService {
 
     // Tag keys for QWERTY keyboard button data storage
-    private static final int TAG_KEY_LETTER = R.string.app_name;  // Tag for letter character
-    private static final int TAG_KEY_SYMBOL = R.string.dictate_record;  // Tag for symbol character
+    private static final int TAG_KEY_LETTER = View.generateViewId();
+    private static final int TAG_KEY_SYMBOL = View.generateViewId();
 
     // define handlers and runnables for background tasks
     private Handler mainHandler;
@@ -1551,7 +1551,7 @@ public class DictateInputMethodService extends InputMethodService {
             } else {
                 isShiftPressed = true;
             }
-            updateKeyboardCase();
+            updateKeyboardDisplay();
         });
         qwertyRow2.addView(shiftButton);
         
@@ -1616,7 +1616,7 @@ public class DictateInputMethodService extends InputMethodService {
                 // Reset shift after typing (but not caps lock)
                 if (isShiftPressed && !isCapsLock) {
                     isShiftPressed = false;
-                    updateKeyboardCase();
+                    updateKeyboardDisplay();
                 }
             }
         });
@@ -1635,10 +1635,6 @@ public class DictateInputMethodService extends InputMethodService {
         button.setTextSize(12);
         button.setAllCaps(false);
         return button;
-    }
-
-    private void updateKeyboardCase() {
-        updateKeyboardDisplay();
     }
 
     private void updateKeyboardMode() {
