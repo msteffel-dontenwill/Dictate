@@ -89,6 +89,10 @@ import java.util.concurrent.Executors;
 // MAIN CLASS
 public class DictateInputMethodService extends InputMethodService {
 
+    // Tag keys for QWERTY keyboard button data storage
+    private static final int TAG_KEY_LETTER = R.string.app_name;  // Tag for letter character
+    private static final int TAG_KEY_SYMBOL = R.string.dictate_record;  // Tag for symbol character
+
     // define handlers and runnables for background tasks
     private Handler mainHandler;
     private Handler deleteHandler;
@@ -107,7 +111,6 @@ public class DictateInputMethodService extends InputMethodService {
     private boolean vibrationEnabled = true;
     private boolean audioFocusEnabled = true;
     private TextView selectedCharacter = null;
-    private boolean spaceButtonUserHasSwiped = false;
     private int currentInputLanguagePos;
     private String currentInputLanguageValue;
     private boolean autoSwitchKeyboard = false;
@@ -1596,8 +1599,8 @@ public class DictateInputMethodService extends InputMethodService {
         params.setMargins(2, 0, 2, 0);
         button.setLayoutParams(params);
         button.setText(letter);
-        button.setTag(R.id.settings_btn, letter); // Store letter in tag
-        button.setTag(R.id.resend_btn, symbol); // Store symbol in tag
+        button.setTag(TAG_KEY_LETTER, letter); // Store letter in tag
+        button.setTag(TAG_KEY_SYMBOL, symbol); // Store symbol in tag
         button.setTextSize(14);
         button.setAllCaps(false);
         button.setOnClickListener(v -> {
@@ -1653,8 +1656,6 @@ public class DictateInputMethodService extends InputMethodService {
         if (shiftButton != null) {
             if (isCapsLock) {
                 shiftButton.setText("⇪");
-            } else if (isShiftPressed) {
-                shiftButton.setText("⇧");
             } else {
                 shiftButton.setText("⇧");
             }
@@ -1666,8 +1667,8 @@ public class DictateInputMethodService extends InputMethodService {
             View child = row.getChildAt(i);
             if (child instanceof MaterialButton && child != shiftButton && child != symbolsButton) {
                 MaterialButton btn = (MaterialButton) child;
-                String letter = (String) btn.getTag(R.id.settings_btn);
-                String symbol = (String) btn.getTag(R.id.resend_btn);
+                String letter = (String) btn.getTag(TAG_KEY_LETTER);
+                String symbol = (String) btn.getTag(TAG_KEY_SYMBOL);
                 
                 if (letter != null) {
                     if (isSymbolsMode) {
