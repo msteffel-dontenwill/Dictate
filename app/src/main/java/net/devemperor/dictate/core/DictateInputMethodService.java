@@ -111,6 +111,11 @@ public class DictateInputMethodService extends InputMethodService {
     private int currentInputLanguagePos;
     private String currentInputLanguageValue;
     private boolean autoSwitchKeyboard = false;
+    
+    // QWERTY keyboard state
+    private boolean isShiftPressed = false;
+    private boolean isCapsLock = false;
+    private boolean isSymbolsMode = false;
 
     // Swipe-to-select-words state
     private boolean isSwipeSelectingWords = false;
@@ -147,6 +152,7 @@ public class DictateInputMethodService extends InputMethodService {
     private MaterialButton switchButton;
     private MaterialButton trashButton;
     private MaterialButton spaceButton;
+    private MaterialButton sendButton;
     private MaterialButton pauseButton;
     private MaterialButton enterButton;
     private ConstraintLayout infoCl;
@@ -164,6 +170,11 @@ public class DictateInputMethodService extends InputMethodService {
     private MaterialButton editCopyButton;
     private MaterialButton editPasteButton;
     private LinearLayout overlayCharactersLl;
+    private LinearLayout qwertyRow1;
+    private LinearLayout qwertyRow2;
+    private LinearLayout qwertyRow3;
+    private MaterialButton shiftButton;
+    private MaterialButton symbolsButton;
 
     // Recording visuals (pulsing)
     private ObjectAnimator recordPulseX;
@@ -206,8 +217,13 @@ public class DictateInputMethodService extends InputMethodService {
         switchButton = dictateKeyboardView.findViewById(R.id.switch_btn);
         trashButton = dictateKeyboardView.findViewById(R.id.trash_btn);
         spaceButton = dictateKeyboardView.findViewById(R.id.space_btn);
+        sendButton = dictateKeyboardView.findViewById(R.id.send_btn);
         pauseButton = dictateKeyboardView.findViewById(R.id.pause_btn);
         enterButton = dictateKeyboardView.findViewById(R.id.enter_btn);
+
+        qwertyRow1 = dictateKeyboardView.findViewById(R.id.qwerty_row_1);
+        qwertyRow2 = dictateKeyboardView.findViewById(R.id.qwerty_row_2);
+        qwertyRow3 = dictateKeyboardView.findViewById(R.id.qwerty_row_3);
 
         infoCl = dictateKeyboardView.findViewById(R.id.info_cl);
         infoTv = dictateKeyboardView.findViewById(R.id.info_tv);
@@ -536,45 +552,21 @@ public class DictateInputMethodService extends InputMethodService {
             trashButton.setVisibility(View.GONE);
         });
 
-        // space button that changes cursor position if user swipes over it
-        spaceButton.setOnTouchListener((v, event) -> {
+        // space button - simplified to just insert space
+        spaceButton.setOnClickListener(v -> {
+            vibrate();
             InputConnection inputConnection = getCurrentInputConnection();
             if (inputConnection != null) {
-                spaceButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_baseline_keyboard_double_arrow_left_24,
-                        0, R.drawable.ic_baseline_keyboard_double_arrow_right_24, 0);
-                switch (event.getAction()) {
-                    case MotionEvent.ACTION_DOWN:
-                        spaceButtonUserHasSwiped = false;
-                        spaceButton.setTag(event.getX());
-                        break;
-
-                    case MotionEvent.ACTION_MOVE:
-                        float x = (float) spaceButton.getTag();
-                        if (event.getX() - x > 30) {
-                            vibrate();
-                            inputConnection.commitText("", 2);
-                            spaceButton.setTag(event.getX());
-                            spaceButtonUserHasSwiped = true;
-                        } else if (x - event.getX() > 30) {
-                            vibrate();
-                            inputConnection.commitText("", -1);
-                            spaceButton.setTag(event.getX());
-                            spaceButtonUserHasSwiped = true;
-                        }
-                        break;
-
-                    case MotionEvent.ACTION_UP:
-                        if (!spaceButtonUserHasSwiped) {
-                            vibrate();
-                            inputConnection.commitText(" ", 1);
-                        }
-                        spaceButton.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0);
-                        break;
-                }
-            } else {
-                spaceButton.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0);
+                inputConnection.commitText(" ", 1);
             }
-            return false;
+        });
+
+        // send button - triggers recording send/stop
+        sendButton.setOnClickListener(v -> {
+            vibrate();
+            if (isRecording) {
+                stopRecording();
+            }
         });
 
         pauseButton.setOnClickListener(v -> {
@@ -705,6 +697,9 @@ public class DictateInputMethodService extends InputMethodService {
             charView.setBackground(bg);
             overlayCharactersLl.addView(charView);
         }
+
+        // Initialize QWERTY keyboard
+        initializeQwertyKeyboard(context);
 
         prepareRecordPulseAnimation();  // prepare pulsing animation for record button (used while recording)
 
@@ -838,13 +833,16 @@ public class DictateInputMethodService extends InputMethodService {
         }
 
         View[] backgroundColorViews = {
-                settingsButton, recordButton, resendButton, backspaceButton, switchButton, trashButton, spaceButton, pauseButton, enterButton,
+                settingsButton, recordButton, resendButton, backspaceButton, switchButton, trashButton, spaceButton, sendButton, pauseButton, enterButton,
                 editSelectAllButton, editUndoButton, editRedoButton, editCutButton, editCopyButton, editPasteButton
         };
         TextView[] textColorViews = { infoTv, runningPromptTv };
         for (View v : backgroundColorViews) v.setBackgroundColor(accentColor);
         for (TextView tv : textColorViews) tv.setTextColor(accentColor);
         runningPromptPb.getIndeterminateDrawable().setColorFilter(accentColor, android.graphics.PorterDuff.Mode.SRC_IN);
+        
+        // Apply accent color to QWERTY keyboard buttons
+        applyColorToQwertyKeyboard(accentColor);
 
         // show infos for updates, ratings or donations
         long totalAudioTime = usageDb.getTotalAudioTime();
@@ -1524,6 +1522,176 @@ public class DictateInputMethodService extends InputMethodService {
         isPreparingRecording = false;
         if (bluetoothHandler != null && scoTimeoutRunnable != null) {
             bluetoothHandler.removeCallbacks(scoTimeoutRunnable);
+        }
+    }
+
+    // Initialize QWERTY keyboard rows
+    private void initializeQwertyKeyboard(Context context) {
+        // Row 1: Q W E R T Y U I O P
+        String[] row1Keys = {"Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"};
+        String[] row1Symbols = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
+        populateKeyboardRow(qwertyRow1, row1Keys, row1Symbols, context);
+
+        // Row 2: A S D F G H J K L (with shift on left)
+        String[] row2Keys = {"A", "S", "D", "F", "G", "H", "J", "K", "L"};
+        String[] row2Symbols = {"@", "#", "$", "_", "&", "-", "+", "(", ")"};
+        
+        // Add shift button
+        shiftButton = createSpecialButton(context, "⇧", false);
+        shiftButton.setOnClickListener(v -> {
+            vibrate();
+            if (isCapsLock) {
+                isCapsLock = false;
+                isShiftPressed = false;
+            } else if (isShiftPressed) {
+                isCapsLock = true;
+            } else {
+                isShiftPressed = true;
+            }
+            updateKeyboardCase();
+        });
+        qwertyRow2.addView(shiftButton);
+        
+        populateKeyboardRow(qwertyRow2, row2Keys, row2Symbols, context);
+
+        // Row 3: Z X C V B N M (with symbols button on left and backspace-like extra button on right)
+        String[] row3Keys = {"Z", "X", "C", "V", "B", "N", "M"};
+        String[] row3Symbols = {"*", "\"", "'", ":", ";", "!", "?"};
+        
+        // Add symbols/numbers toggle button
+        symbolsButton = createSpecialButton(context, "123", true);
+        symbolsButton.setOnClickListener(v -> {
+            vibrate();
+            isSymbolsMode = !isSymbolsMode;
+            updateKeyboardMode();
+        });
+        qwertyRow3.addView(symbolsButton);
+        
+        populateKeyboardRow(qwertyRow3, row3Keys, row3Symbols, context);
+        
+        // Add comma and period at the end
+        MaterialButton commaButton = createKeyButton(context, ",", ",");
+        qwertyRow3.addView(commaButton);
+        
+        MaterialButton periodButton = createKeyButton(context, ".", ".");
+        qwertyRow3.addView(periodButton);
+    }
+
+    private void populateKeyboardRow(LinearLayout row, String[] letters, String[] symbols, Context context) {
+        for (int i = 0; i < letters.length; i++) {
+            String letter = letters[i];
+            String symbol = symbols[i];
+            MaterialButton button = createKeyButton(context, letter, symbol);
+            row.addView(button);
+        }
+    }
+
+    private MaterialButton createKeyButton(Context context, String letter, String symbol) {
+        MaterialButton button = new MaterialButton(context);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                0,
+                (int) (48 * context.getResources().getDisplayMetrics().density),
+                1.0f
+        );
+        params.setMargins(2, 0, 2, 0);
+        button.setLayoutParams(params);
+        button.setText(letter);
+        button.setTag(R.id.settings_btn, letter); // Store letter in tag
+        button.setTag(R.id.resend_btn, symbol); // Store symbol in tag
+        button.setTextSize(14);
+        button.setAllCaps(false);
+        button.setOnClickListener(v -> {
+            vibrate();
+            InputConnection ic = getCurrentInputConnection();
+            if (ic != null) {
+                String text = isSymbolsMode ? symbol : letter;
+                if (!isSymbolsMode && !isCapsLock && !isShiftPressed) {
+                    text = text.toLowerCase();
+                }
+                ic.commitText(text, 1);
+                
+                // Reset shift after typing (but not caps lock)
+                if (isShiftPressed && !isCapsLock) {
+                    isShiftPressed = false;
+                    updateKeyboardCase();
+                }
+            }
+        });
+        return button;
+    }
+
+    private MaterialButton createSpecialButton(Context context, String text, boolean wider) {
+        MaterialButton button = new MaterialButton(context);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                (int) ((wider ? 70 : 56) * context.getResources().getDisplayMetrics().density),
+                (int) (48 * context.getResources().getDisplayMetrics().density)
+        );
+        params.setMargins(2, 0, 2, 0);
+        button.setLayoutParams(params);
+        button.setText(text);
+        button.setTextSize(12);
+        button.setAllCaps(false);
+        return button;
+    }
+
+    private void updateKeyboardCase() {
+        updateKeyboardDisplay();
+    }
+
+    private void updateKeyboardMode() {
+        symbolsButton.setText(isSymbolsMode ? "ABC" : "123");
+        updateKeyboardDisplay();
+    }
+
+    private void updateKeyboardDisplay() {
+        // Update all letter buttons to show correct case or symbols
+        updateRowDisplay(qwertyRow1);
+        updateRowDisplay(qwertyRow2);
+        updateRowDisplay(qwertyRow3);
+        
+        // Update shift button appearance
+        if (shiftButton != null) {
+            if (isCapsLock) {
+                shiftButton.setText("⇪");
+            } else if (isShiftPressed) {
+                shiftButton.setText("⇧");
+            } else {
+                shiftButton.setText("⇧");
+            }
+        }
+    }
+
+    private void updateRowDisplay(LinearLayout row) {
+        for (int i = 0; i < row.getChildCount(); i++) {
+            View child = row.getChildAt(i);
+            if (child instanceof MaterialButton && child != shiftButton && child != symbolsButton) {
+                MaterialButton btn = (MaterialButton) child;
+                String letter = (String) btn.getTag(R.id.settings_btn);
+                String symbol = (String) btn.getTag(R.id.resend_btn);
+                
+                if (letter != null) {
+                    if (isSymbolsMode) {
+                        btn.setText(symbol);
+                    } else {
+                        btn.setText((isCapsLock || isShiftPressed) ? letter : letter.toLowerCase());
+                    }
+                }
+            }
+        }
+    }
+
+    private void applyColorToQwertyKeyboard(int color) {
+        if (qwertyRow1 != null) applyColorToRow(qwertyRow1, color);
+        if (qwertyRow2 != null) applyColorToRow(qwertyRow2, color);
+        if (qwertyRow3 != null) applyColorToRow(qwertyRow3, color);
+    }
+
+    private void applyColorToRow(LinearLayout row, int color) {
+        for (int i = 0; i < row.getChildCount(); i++) {
+            View child = row.getChildAt(i);
+            if (child instanceof MaterialButton) {
+                child.setBackgroundColor(color);
+            }
         }
     }
 }
