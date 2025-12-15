@@ -43,7 +43,7 @@
         android:foregroundGravity="center"
         android:minWidth="0dp"
         android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@+id/space_btn"
+        app:layout_constraintBottom_toTopOf="@+id/qwerty_row_1"
         app:layout_constraintEnd_toStartOf="@+id/backspace_btn"
         app:layout_constraintStart_toEndOf="@+id/record_btn"
         app:layout_constraintTop_toBottomOf="@+id/edit_buttons_keyboard_ll"
@@ -58,7 +58,7 @@
         android:foreground="@drawable/ic_baseline_keyboard_backspace_24"
         android:foregroundGravity="center"
         android:minWidth="56dp"
-        app:layout_constraintBottom_toTopOf="@+id/enter_btn"
+        app:layout_constraintBottom_toTopOf="@+id/qwerty_row_1"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/resend_btn"
         app:layout_constraintTop_toBottomOf="@+id/edit_buttons_keyboard_ll" />

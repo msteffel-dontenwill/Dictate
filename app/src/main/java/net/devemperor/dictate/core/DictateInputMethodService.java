@@ -1688,6 +1688,10 @@ public class DictateInputMethodService extends InputMethodService {
         if (qwertyRow1 != null) applyColorToRow(qwertyRow1, color);
         if (qwertyRow2 != null) applyColorToRow(qwertyRow2, color);
         if (qwertyRow3 != null) applyColorToRow(qwertyRow3, color);
+        
+        // Apply color to special buttons too
+        if (shiftButton != null) shiftButton.setBackgroundColor(color);
+        if (symbolsButton != null) symbolsButton.setBackgroundColor(color);
     }
 
     private void applyColorToRow(LinearLayout row, int color) {
