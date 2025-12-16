@@ -1,10 +1,6 @@
-plugins {
-    alias(libs.plugins.android.application)
-
-    // Add the Google services Gradle plugin
-    id 'com.google.gms.google-services'
-    id 'com.google.firebase.crashlytics'
-}
+apply plugin: 'com.android.application'
+apply plugin: 'com.google.gms.google-services'
+apply plugin: 'com.google.firebase.crashlytics'
 
 android {
     namespace 'net.devemperor.dictate'
